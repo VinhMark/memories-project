@@ -1,18 +1,57 @@
 import PostMessage from '../models/postMessage.js';
 import mongoose from 'mongoose';
 
-export const getPosts = async (req, res) => {
+export const getPost = async (req, res) => {
+  const { id } = req.params;
   try {
-    const postMessage = await PostMessage.find();
-    res.status(200).json(postMessage);
+    const post = await PostMessage.findOne({ slug: id });
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
+};
+
+export const getPosts = async (req, res) => {
+  const { page } = req.query;
+  try {
+    const LIMIT = 8;
+    const startIndex = (Number(page) - 1) * LIMIT;
+    const total = await PostMessage.countDocuments({});
+
+    const postMessage = await PostMessage.find()
+      .sort({ _id: -1 })
+      .limit(LIMIT)
+      .skip(startIndex);
+    res.status(200).json({
+      data: postMessage,
+      currentPage: Number(page),
+      numberOfPage: Math.ceil(total / LIMIT),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+export const getPostsBySearch = async (req, res) => {
+  const { searchQuery, tags } = req.query;
+  try {
+    const title = new RegExp(searchQuery, 'i');
+    const posts = await PostMessage.find({
+      $or: [{ title }, { tags: { $in: tags.split(',') } }],
+    });
+    res.json({ data: posts });
+  } catch (error) {
+    res.status(404).json({ message: error });
+  }
+};
+
 export const createPost = async (req, res) => {
   const post = req.body;
-  const newPost = new PostMessage(post);
+  const newPost = new PostMessage({
+    ...post,
+    creator: req.userId,
+    createAt: new Date().toISOString(),
+  });
   try {
     await newPost.save();
     res.status(201).json(newPost);
@@ -43,18 +82,37 @@ export const removePost = async (req, res) => {
 
 export const likePost = async (req, res) => {
   const { id } = req.params;
-  console.log(id);
+  if (!req.userId) {
+    return res.json({ message: 'Unauthenticated' });
+  }
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(404).send('No post with that id.');
   }
 
   const post = await PostMessage.findById(id);
-  const updatedPost = await PostMessage.findByIdAndUpdate(
-    id,
-    {
-      likeCount: post.likeCount + 1,
-    },
-    { new: true }
-  );
+  const index = post.likes.findIndex((id) => id === String(req.userId));
+
+  if (index === -1) {
+    post.likes.push(req.userId);
+  } else {
+    post.likes = post.likes.filter((id) => id !== String(req.userId));
+  }
+  const updatedPost = await PostMessage.findByIdAndUpdate(id, post, {
+    new: true,
+  });
   res.json(updatedPost);
+};
+
+export const commentPost = async (req, res) => {
+  const { id } = req.params;
+  const { value } = req.body;
+
+  const post = await PostMessage.findById(id);
+  post.comments.push(value);
+  const updated = await PostMessage.findByIdAndUpdate(id, post, {
+    new: true,
+  });
+
+  res.json(updated);
 };

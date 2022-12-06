@@ -8,24 +8,48 @@ import {
 } from '@material-ui/core';
 import LockOutlinedIcon from '@material-ui/icons/LockOpenOutlined';
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import Input from './Input';
 import Icon from './icon';
 
 import { GoogleLogin } from 'react-google-login';
 
 import useStyles from './style';
+import { signin, signup } from '../../actions/auth';
+
+const initialValue = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+};
 
 function Auth() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const classes = useStyles();
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [formData, setFormData] = useState(initialValue);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isSignUp) {
+      dispatch(signup(formData, navigate));
+    } else {
+      dispatch(signin(formData, navigate));
+    }
   };
 
-  const googleSuccess = () => {
-    console.log('Google Sign In was unsuccessful. Try again');
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const googleSuccess = (res) => {
+    dispatch({ type: 'AUTH', payload: res });
+    navigate('/');
   };
   const googleFailure = (error) => {
     console.log(error);
@@ -53,17 +77,17 @@ function Auth() {
               <>
                 <Input
                   type='text'
-                  name='lastName'
-                  label='Last name'
-                  handleChange={() => {}}
+                  name='firstName'
+                  label='First name'
+                  handleChange={handleChange}
                   haft
                   autoFocus
                 />
                 <Input
                   type='text'
-                  name='firstName'
-                  label='First name'
-                  handleChange={() => {}}
+                  name='lastName'
+                  label='Last name'
+                  handleChange={handleChange}
                   haft
                 />
               </>
@@ -72,20 +96,21 @@ function Auth() {
               name='email'
               type='email'
               label='Email'
-              handleChange={() => {}}
+              handleChange={handleChange}
+              autoFocus={isSignUp ? false : true}
             />
             <Input
               name='password'
               type={showPassword ? 'text' : 'password'}
               label='Password'
               handleShowPassword={() => setShowPassword(!showPassword)}
-              handleChange={() => {}}
+              handleChange={handleChange}
             />
             {isSignUp && (
               <Input
                 name='confirmPassword'
                 label='Repeat Password'
-                handleChange={() => {}}
+                handleChange={handleChange}
               />
             )}
             <Button
@@ -95,7 +120,7 @@ function Auth() {
               color='primary'
               className={classes.submit}
             >
-              {isSignUp ? 'Signup' : 'Sign in'}
+              {isSignUp ? 'Sign up' : 'Sign in'}
             </Button>
             <GoogleLogin
               clientId='83373192730-6eom84nivja63u9qp3hrcpep69a3jjkn.apps.googleusercontent.com'

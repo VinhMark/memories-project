@@ -19,6 +19,7 @@ const Form = ({ currentId, setCurrentId }) => {
     tags: '',
     selectedFile: '',
   });
+  const user = JSON.parse(localStorage.getItem('profile'));
 
   useEffect(() => {
     if (!post) return;
@@ -34,9 +35,11 @@ const Form = ({ currentId, setCurrentId }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (currentId) {
-      dispatch(updatePost(currentId, postData));
+      dispatch(
+        updatePost(currentId, { ...postData, name: user?.profileObj?.name })
+      );
     } else {
-      dispatch(createPost(postData));
+      dispatch(createPost({ ...postData, name: user?.profileObj?.name }));
     }
     clear();
   };
@@ -52,8 +55,18 @@ const Form = ({ currentId, setCurrentId }) => {
     });
   };
 
+  if (!user?.profileObj?.name) {
+    return (
+      <Paper className={classes.paper} elevation={6}>
+        <Typography variant='h6' align='center'>
+          Please Sign In to crete your own memories and like other's memories
+        </Typography>
+      </Paper>
+    );
+  }
+
   return (
-    <Paper className={classes.paper}>
+    <Paper className={classes.paper} elevation={6}>
       <form
         autoComplete='off'
         className={`${classes.root} ${classes.form}`}
@@ -63,16 +76,7 @@ const Form = ({ currentId, setCurrentId }) => {
           {' '}
           {currentId ? 'Updating' : 'Creating'} A Memories
         </Typography>
-        <TextField
-          name='creator'
-          variant='outlined'
-          label='Creator'
-          fullWidth
-          value={postData.creator}
-          onChange={(e) =>
-            setPostData({ ...postData, creator: e.target.value })
-          }
-        />
+
         <TextField
           name='title'
           variant='outlined'
@@ -86,6 +90,8 @@ const Form = ({ currentId, setCurrentId }) => {
           variant='outlined'
           label='Message'
           fullWidth
+          multiline
+          minRows={4}
           value={postData.message}
           onChange={(e) =>
             setPostData({ ...postData, message: e.target.value })
